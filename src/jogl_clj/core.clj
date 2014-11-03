@@ -8,11 +8,8 @@
            (javax.media.opengl.glu GLU)
            (javax.media.opengl.fixedfunc GLMatrixFunc GLLightingFunc)))
 
-(defn gl-capabilities-factory []
-  (doto (GLCapabilities. (GLProfile/getDefault))
-    (.setBackgroundOpaque true)
-    (.setDoubleBuffered true)
-    (.setDepthBits 16)))
+(defn gl-capabilities-factory  []
+  (doto (GLCapabilities. (GLProfile/getDefault))))
 
 (defn gl-window-factory [capabilities glEventListener animator]
   (doto (GLWindow/create capabilities)
@@ -34,14 +31,14 @@
         window (gl-window-factory capabilities glEventListener animator)]
     (doto animator (.add window))))
 
-(defn gl [drawable]
+(defn- gl [drawable]
   (-> drawable .getGL .getGL2 (DebugGL2.)))
 
-(defn el
+(defn gl-event-listener-factory
   [^GLU glu]
   (reify GLEventListener
 
-    (init [this drawable]
+    (init [_ drawable]
       (doto (gl drawable)
         (.glClearColor 0 0 0 0)
         (.glClearDepth 1)
@@ -51,9 +48,9 @@
         (.glShadeModel GLLightingFunc/GL_SMOOTH))
       nil)
 
-    (dispose [this drawable] nil)
+    (dispose [_ _] nil)
 
-    (display [this drawable]
+    (display [_ drawable]
       (doto (gl drawable)
         (.glClear (bit-or GL/GL_COLOR_BUFFER_BIT GL/GL_DEPTH_BUFFER_BIT))
         (.glLoadIdentity)
@@ -64,16 +61,18 @@
         (.glVertex3f 1 -1 0)
         (.glEnd)) nil)
 
-    (reshape [this drawable x y width height]
+    (reshape [_ drawable _ _ width height]
       (let [height (if (zero? height) 1 height)
             gl (gl drawable)]
         (doto gl
           (.glViewport 0 0 width height)
           (.glMatrixMode GLMatrixFunc/GL_PROJECTION)
           (.glLoadIdentity))
-        (.gluPerspective glu (float 45) (float (/ width height)) (float 0.1) (float 100))
+        (.gluPerspective glu 45. (double (/ width height)) 0.1 100.)
         (doto gl (.glMatrixMode GLMatrixFunc/GL_MODELVIEW)
                  (.glLoadIdentity))))))
 
-(def animator (animator-factory (gl-capabilities-factory) (el (GLU.))))
-(.start animator)
+(def game (animator-factory
+                (gl-capabilities-factory)
+                (gl-event-listener-factory (GLU.))))
+(.start game)
