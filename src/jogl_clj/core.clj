@@ -8,7 +8,7 @@
            (javax.media.opengl.glu GLU)
            (javax.media.opengl.fixedfunc GLMatrixFunc GLLightingFunc)))
 
-(defn gl-capabilities-factory  []
+(defn gl-capabilities-factory []
   (doto (GLCapabilities. (GLProfile/getDefault))))
 
 (defn gl-window-factory [capabilities glEventListener animator]
@@ -34,6 +34,19 @@
 (defn- gl [drawable]
   (-> drawable .getGL .getGL2 (DebugGL2.)))
 
+(defn- glVertex! [gl [x y z]]
+  (.glVertex3f gl x y z))
+
+(defn- glTriangle! [gl points]
+  (.glBegin gl GL/GL_TRIANGLES)
+  (doseq [point points]
+    (glVertex! gl point))
+  (.glEnd gl))
+
+(def state (atom {:zoom 0}))
+
+(defn zoom! [s f] (swap! s #(update-in % [:zoom] f)))
+
 (defn gl-event-listener-factory
   [^GLU glu]
   (reify GLEventListener
@@ -54,12 +67,9 @@
       (doto (gl drawable)
         (.glClear (bit-or GL/GL_COLOR_BUFFER_BIT GL/GL_DEPTH_BUFFER_BIT))
         (.glLoadIdentity)
-        (.glTranslatef 0 0 -6)
-        (.glBegin GL/GL_TRIANGLES)
-        (.glVertex3f 0 1 0)
-        (.glVertex3f -1 -1 0)
-        (.glVertex3f 1 -1 0)
-        (.glEnd)) nil)
+        (.glTranslatef 0 0 (:zoom (zoom! state dec)))
+        (glTriangle! [[0 1 0] [-1 -1 0] [1 -1 0]]))
+      nil)
 
     (reshape [_ drawable _ _ width height]
       (let [height (if (zero? height) 1 height)
@@ -72,7 +82,7 @@
         (doto gl (.glMatrixMode GLMatrixFunc/GL_MODELVIEW)
                  (.glLoadIdentity))))))
 
-(def game (animator-factory
-                (gl-capabilities-factory)
-                (gl-event-listener-factory (GLU.))))
-(.start game)
+(def demo (animator-factory
+            (gl-capabilities-factory)
+            (gl-event-listener-factory (GLU.))))
+(.start demo)
