@@ -16,7 +16,6 @@
     (.addGLEventListener glEventListener)
     (.addWindowListener (proxy [WindowAdapter] []
                           (window-destroyed [_]
-                            (println "closing window and stopping animator")
                             (.stop animator))))
     (.setTitle "title")
     (.setSize 200 200)
