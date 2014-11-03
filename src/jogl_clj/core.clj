@@ -71,7 +71,7 @@
       nil)
 
     (reshape [_ drawable _ _ width height]
-      (let [height (if (zero? height) 1 height)
+      (let [height (max 1 height)
             gl (gl drawable)]
         (doto gl
           (.glViewport 0 0 width height)

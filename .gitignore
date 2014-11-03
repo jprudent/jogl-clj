@@ -69,3 +69,6 @@ Session.vim
 .netrwhist
 *~
 
+hs_err_*
+.nrepl_port
+.nrepl-port
