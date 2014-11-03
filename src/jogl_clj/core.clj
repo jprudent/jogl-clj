@@ -35,39 +35,45 @@
     (doto animator (.add window))))
 
 (defn gl [drawable]
-  (-> drawable .getGL .getGL2  (DebugGL2.)))
+  (-> drawable .getGL .getGL2 (DebugGL2.)))
 
-(defn el [^GLU glu] (reify GLEventListener
-                 (init [this drawable]
-                   (doto (gl drawable)
-                     (.glClearColor 0 0 0 0)
-                     (.glClearDepth 1)
-                     (.glEnable GL/GL_DEPTH_TEST)
-                     (.glDepthFunc GL/GL_LEQUAL)
-                     (.glHint GL2ES1/GL_PERSPECTIVE_CORRECTION_HINT, GL/GL_NICEST)
-                     (.glShadeModel GLLightingFunc/GL_SMOOTH))
-                   nil)
-                 (dispose [this drawable] nil)
-                 (display [this drawable]
-                   (doto (gl drawable)
-                     (.glClear (bit-or GL/GL_COLOR_BUFFER_BIT GL/GL_DEPTH_BUFFER_BIT))
-                     (.glLoadIdentity)
-                     (.glTranslatef 0 0 -6)
-                     (.glBegin GL/GL_TRIANGLES)
-                     (.glVertex3f 0 1 0)
-                     (.glVertex3f -1 -1 0)
-                     (.glVertex3f 1 -1 0)
-                     (.glEnd)) nil)
-                 (reshape [this drawable x y width height]
-                   (let [height (if (zero? height) 1 height)
-                         gl (gl drawable)]
-                     (doto gl
-                       (.glViewport 0 0 width height)
-                       (.glMatrixMode GLMatrixFunc/GL_PROJECTION)
-                       (.glLoadIdentity))
-                     (.gluPerspective glu (float 45) (float (/ width height)) (float 0.1) (float 0.1))
-                     (doto gl (.glMatrixMode GLMatrixFunc/GL_MODELVIEW)
-                              (.glLoadIdentity))))))
+(defn el
+  [^GLU glu]
+  (reify GLEventListener
+
+    (init [this drawable]
+      (doto (gl drawable)
+        (.glClearColor 0 0 0 0)
+        (.glClearDepth 1)
+        (.glEnable GL/GL_DEPTH_TEST)
+        (.glDepthFunc GL/GL_LEQUAL)
+        (.glHint GL2ES1/GL_PERSPECTIVE_CORRECTION_HINT, GL/GL_NICEST)
+        (.glShadeModel GLLightingFunc/GL_SMOOTH))
+      nil)
+
+    (dispose [this drawable] nil)
+
+    (display [this drawable]
+      (doto (gl drawable)
+        (.glClear (bit-or GL/GL_COLOR_BUFFER_BIT GL/GL_DEPTH_BUFFER_BIT))
+        (.glLoadIdentity)
+        (.glTranslatef 0 0 -6)
+        (.glBegin GL/GL_TRIANGLES)
+        (.glVertex3f 0 1 0)
+        (.glVertex3f -1 -1 0)
+        (.glVertex3f 1 -1 0)
+        (.glEnd)) nil)
+
+    (reshape [this drawable x y width height]
+      (let [height (if (zero? height) 1 height)
+            gl (gl drawable)]
+        (doto gl
+          (.glViewport 0 0 width height)
+          (.glMatrixMode GLMatrixFunc/GL_PROJECTION)
+          (.glLoadIdentity))
+        (.gluPerspective glu (float 45) (float (/ width height)) (float 0.1) (float 100))
+        (doto gl (.glMatrixMode GLMatrixFunc/GL_MODELVIEW)
+                 (.glLoadIdentity))))))
 
 (def animator (animator-factory (gl-capabilities-factory) (el (GLU.))))
 (.start animator)
