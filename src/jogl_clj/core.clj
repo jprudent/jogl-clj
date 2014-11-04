@@ -8,10 +8,10 @@
            (javax.media.opengl.glu GLU)
            (javax.media.opengl.fixedfunc GLMatrixFunc GLLightingFunc)))
 
-(defn gl-capabilities-factory []
+(defn- gl-capabilities-factory []
   (doto (GLCapabilities. (GLProfile/getDefault))))
 
-(defn gl-window-factory [capabilities glEventListener animator]
+(defn- gl-window-factory [capabilities glEventListener animator]
   (doto (GLWindow/create capabilities)
     (.addGLEventListener glEventListener)
     (.addWindowListener (proxy [WindowAdapter] []
@@ -25,63 +25,46 @@
     (.setFullscreen false)
     (.setDefaultCloseOperation WindowClosingProtocol$WindowClosingMode/DISPOSE_ON_CLOSE)))
 
-(defn animator-factory [capabilities glEventListener]
+(defn- animator-factory [capabilities glEventListener]
   (let [animator (FPSAnimator. 1)
         window (gl-window-factory capabilities glEventListener animator)]
     (doto animator (.add window))))
 
-(defn- gl [drawable]
+(defn- call-user-def [user-def args]
+  (when (not (nil? user-def))
+    (apply user-def args))
+  nil)
+
+(defn- gl-event-listener-factory
+  [{user-init :init user-dispose :dispose
+    user-display :display user-reshape :reshape}]
+  (reify GLEventListener
+    (init [_ drawable]
+      (call-user-def user-init [drawable]))
+    (dispose [_ drawable]
+      (call-user-def user-dispose [drawable]))
+    (display [_ drawable]
+      (call-user-def user-display [drawable]))
+    (reshape [_ drawable x y width height]
+      (call-user-def user-reshape [drawable x y width height]))))
+
+;; User API
+
+(defn start-demo [demo-def]
+  (.start (animator-factory
+            (gl-capabilities-factory)
+            (gl-event-listener-factory demo-def))))
+
+;; GL API
+
+(defn gl [drawable]
   (-> drawable .getGL .getGL2 (DebugGL2.)))
 
-(defn- glVertex! [gl [x y z]]
+(defn glVertex! [gl [x y z]]
   (.glVertex3f gl x y z))
 
-(defn- glTriangle! [gl points]
+(defn glTriangle! [gl points]
   (.glBegin gl GL/GL_TRIANGLES)
   (doseq [point points]
     (glVertex! gl point))
   (.glEnd gl))
-
-(def state (atom {:zoom 0}))
-
-(defn zoom! [s f] (swap! s #(update-in % [:zoom] f)))
-
-(defn gl-event-listener-factory
-  [^GLU glu]
-  (reify GLEventListener
-
-    (init [_ drawable]
-      (doto (gl drawable)
-        (.glClearColor 0 0 0 0)
-        (.glClearDepth 1)
-        (.glEnable GL/GL_DEPTH_TEST)
-        (.glDepthFunc GL/GL_LEQUAL)
-        (.glHint GL2ES1/GL_PERSPECTIVE_CORRECTION_HINT, GL/GL_NICEST)
-        (.glShadeModel GLLightingFunc/GL_SMOOTH))
-      nil)
-
-    (dispose [_ _] nil)
-
-    (display [_ drawable]
-      (doto (gl drawable)
-        (.glClear (bit-or GL/GL_COLOR_BUFFER_BIT GL/GL_DEPTH_BUFFER_BIT))
-        (.glLoadIdentity)
-        (.glTranslatef 0 0 (:zoom (zoom! state dec)))
-        (glTriangle! [[0 1 0] [-1 -1 0] [1 -1 0]]))
-      nil)
-
-    (reshape [_ drawable _ _ width height]
-      (let [height (max 1 height)
-            gl (gl drawable)]
-        (doto gl
-          (.glViewport 0 0 width height)
-          (.glMatrixMode GLMatrixFunc/GL_PROJECTION)
-          (.glLoadIdentity))
-        (.gluPerspective glu 45. (double (/ width height)) 0.1 100.)
-        (doto gl (.glMatrixMode GLMatrixFunc/GL_MODELVIEW)
-                 (.glLoadIdentity))))))
-
-(def demo (animator-factory
-            (gl-capabilities-factory)
-            (gl-event-listener-factory (GLU.))))
-(.start demo)
